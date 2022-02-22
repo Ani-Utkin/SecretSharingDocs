@@ -7,7 +7,7 @@ import docx
 
 # When the new document is finished writing, the Google Drive API will upload it to the Google Drive.
 
-# This is to test out how to perserve the structure of the input document
+# This is to test out how to perserve the structure of the input document.
 
 # From working with this api, the paragraphs (docParagraphs) is an object.
 # There should be a way to convert it to a string so that it can be written
