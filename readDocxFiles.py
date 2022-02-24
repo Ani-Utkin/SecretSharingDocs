@@ -17,13 +17,21 @@ import docx
 # Gets all the paragraphs in a document
 def getParagraphs(document):
     docParagraphs = document.paragraphs
+    return docParagraphs
 
 # Gets all the tables in a document
 def getTables(document):
     docTables = document.tables
+    return docTables
 
 # This will be the input document where the user would want to upload
 doc = docx.Document("testDocuments/TestDocument.docx")
+
+# paragraphs
+p = getParagraphs(doc)
+
+# tables
+t = getTables(doc)
 
 # The document where the input document will be copied
 newDoc = docx.Document()
@@ -32,7 +40,12 @@ newDoc = docx.Document()
 character = ''
 
 # Stores the characters from the file
-fileContent = ""
+fileContent = ''
+
+# Check that all paragraphs are extracted from document
+for paragraph in p:
+    print(paragraph.text)
+
 
 # Need to see if its possible to check for a way to iterate through the file to get a character and have it encoded using SSS.
 
