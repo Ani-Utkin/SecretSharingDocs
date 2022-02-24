@@ -1,3 +1,4 @@
+import SSS
 import docx
 
 # The program should be able to take a .docx document as input
@@ -21,8 +22,21 @@ def getParagraphs(document):
 def getTables(document):
     docTables = document.tables
 
-
+# This will be the input document where the user would want to upload
 doc = docx.Document("testDocuments/TestDocument.docx")
 
-getParagraphs(doc)
-getTables(doc)
+# The document where the input document will be copied
+newDoc = docx.Document()
+
+# Character in a document file
+character = ''
+
+# Stores the characters from the file
+fileContent = ""
+
+# Need to see if its possible to check for a way to iterate through the file to get a character and have it encoded using SSS.
+
+# Questions for when the document contains a table:
+# Do we need to compute just the contents of the table or
+# Is there a way to encrypt the entire table?
+# What does an encrypted table look like?
