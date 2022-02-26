@@ -76,3 +76,4 @@ def generate_shares(n, m, secret):
 		shares.append((x, polynom(x, coefficients)))
 
 	return shares
+
