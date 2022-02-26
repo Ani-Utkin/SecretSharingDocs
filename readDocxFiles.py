@@ -1,55 +1,130 @@
-import SSS
-import docx
+# Copyright 2019 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+from __future__ import print_function
 
-# The program should be able to take a .docx document as input
-# Then distinguish between tables and paragraph from the document
-# This program should be able to read the contents of the document,
-# and write them to another new document.
+import SSSTest
 
-# When the new document is finished writing, the Google Drive API will upload it to the Google Drive.
+import googleapiclient.discovery as discovery
+from httplib2 import Http
+from oauth2client import client
+from oauth2client import file
+from oauth2client import tools
 
-# This is to test out how to perserve the structure of the input document.
-
-# From working with this api, the paragraphs (docParagraphs) is an object.
-# There should be a way to convert it to a string so that it can be written
-# into the new document.
-
-# Gets all the paragraphs in a document
-def getParagraphs(document):
-    docParagraphs = document.paragraphs
-    return docParagraphs
-
-# Gets all the tables in a document
-def getTables(document):
-    docTables = document.tables
-    return docTables
-
-# This will be the input document where the user would want to upload
-doc = docx.Document("testDocuments/TestDocument.docx")
-
-# paragraphs
-p = getParagraphs(doc)
-
-# tables
-t = getTables(doc)
-
-# The document where the input document will be copied
-newDoc = docx.Document()
-
-# Character in a document file
-character = ''
-
-# Stores the characters from the file
-fileContent = ''
-
-# Check that all paragraphs are extracted from document
-for paragraph in p:
-    print(paragraph.text)
+SCOPES = 'https://www.googleapis.com/auth/documents.readonly'
+DISCOVERY_DOC = 'https://docs.googleapis.com/$discovery/rest?version=v1'
+DOCUMENT_ID = '17fI0PQODwmZpWjGv2f1SGYCVfI7_Wykhtui3YwMDEkk'
 
 
-# Need to see if its possible to check for a way to iterate through the file to get a character and have it encoded using SSS.
+def get_credentials():
+    """Gets valid user credentials from storage.
 
-# Questions for when the document contains a table:
-# Do we need to compute just the contents of the table or
-# Is there a way to encrypt the entire table?
-# What does an encrypted table look like?
+    If nothing has been stored, or if the stored credentials are invalid,
+    the OAuth 2.0 flow is completed to obtain the new credentials.
+
+    Returns:
+        Credentials, the obtained credential.
+    """
+    store = file.Storage('token.json')
+    credentials = store.get()
+
+    if not credentials or credentials.invalid:
+        flow = client.flow_from_clientsecrets('credentials.json', SCOPES)
+        credentials = tools.run_flow(flow, store)
+    return credentials
+
+def read_paragraph_element(element):
+    """Returns the text in the given ParagraphElement.
+
+        Args:
+            element: a ParagraphElement from a Google Doc.
+    """
+
+    text_run = element.get('textRun')
+    if not text_run:
+        return ''
+
+    txt = text_run.get('content')
+
+    txtShare = str(SSSTest.SSSText(txt))
+
+    print(txtShare)
+    print("\n")
+    print(txt)
+
+    # replace content with share
+    # text_run['content'] = txtShare
+
+    return text_run.get('content')
+
+
+def read_strucutural_elements(elements):
+    """Recurses through a list of Structural Elements to read a document's text where text may be
+        in nested elements.
+
+        Args:
+            elements: a list of Structural Elements.
+    """
+    text = ''
+    for value in elements:
+        if 'paragraph' in value:
+            elements = value.get('paragraph').get('elements')
+            for elem in elements:
+                text += read_paragraph_element(elem)
+        elif 'table' in value:
+            # The text in table cells are in nested Structural Elements and tables may be
+            # nested.
+            table = value.get('table')
+            for row in table.get('tableRows'):
+                cells = row.get('tableCells')
+                for cell in cells:
+                    text += read_strucutural_elements(cell.get('content'))
+        elif 'tableOfContents' in value:
+            # The text in the TOC is also in a Structural Element.
+            toc = value.get('tableOfContents')
+            text += read_strucutural_elements(toc.get('content'))
+    return text
+
+
+def main():
+    """Uses the Docs API to print out the text of a document."""
+    credentials = get_credentials()
+    http = credentials.authorize(Http())
+    docs_service = discovery.build(
+        'docs', 'v1', http=http, discoveryServiceUrl=DISCOVERY_DOC)
+
+    # The Original document to be encrypted
+    originalDoc = docs_service.documents().get(documentId=DOCUMENT_ID).execute()
+    doc_content = originalDoc.get('body').get('content')
+
+    shareDocs = []
+
+    # Creates copies for the shares
+    for copies in range(3):
+        shareDocs.append(originalDoc)
+
+    shareContent = shareDocs[1].get('body').get('content')
+    
+    read_strucutural_elements(shareContent)
+
+    """The following program will:
+        X    1. Get the document to be encrypted
+        X    2. For each number of shares, create a copy
+        X    3. Extract text from the original
+        X    4. For each character in the text, execute SSS
+            5. store each character share into the copies.
+    """
+
+
+if __name__ == '__main__':
+    main()
