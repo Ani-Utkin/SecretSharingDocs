@@ -14,6 +14,8 @@
 from __future__ import print_function
 
 import SSSTest
+import json
+import sys
 
 import googleapiclient.discovery as discovery
 from httplib2 import Http
@@ -56,14 +58,7 @@ def read_paragraph_element(element):
 
     txt = text_run.get('content')
 
-    txtShare = str(SSSTest.SSSText(txt))
-
-    print(txtShare)
-    print("\n")
-    print(txt)
-
-    # replace content with share
-    # text_run['content'] = txtShare
+    text_run['content'] = " "
 
     return text_run.get('content')
 
@@ -107,15 +102,57 @@ def main():
     originalDoc = docs_service.documents().get(documentId=DOCUMENT_ID).execute()
     doc_content = originalDoc.get('body').get('content')
 
+    # The id of the original document
+    originalID = originalDoc['documentId']
+
+    # Stores copies of the original document
     shareDocs = []
 
     # Creates copies for the shares
     for copies in range(3):
         shareDocs.append(originalDoc)
+        
+        # document_copy_id = drive_response.get('id')
 
-    shareContent = shareDocs[1].get('body').get('content')
     
-    read_strucutural_elements(shareContent)
+    for i in range(len(doc_content)):
+        if 'paragraph' in doc_content[i]:
+            text = doc_content[i].get('paragraph').get('elements')[0].get('textRun').get('content')
+            SSShares = SSSTest.SSSText(text)
+
+            # Gets the sss shares from each letter
+            for j in range(len(SSShares)):
+                # Gets the individual share
+                x = SSShares[j]
+
+                # Split the share between the three doc shares
+                for k in range(len(SSShares[j])):
+                    shareDocContent = shareDocs[k].get('body').get('content')[i]
+                    if 'paragraph' in shareDocContent:
+                        doc = shareDocContent.get('paragraph').get('elements')[0].get('textRun')
+
+                        doc['content'] += str(x[k]) + " "
+
+    #for content in doc_content:
+    #   if 'paragraph':
+    #       text = content.get('paragraph').get('elements')[0].get('textRun').get('content')
+    #       SSStext = execute SSS on text
+    #
+    #       Second For Loop to separate the generated shares
+    #       
+    #       for loop to set the share docs' content to the generated shares.
+    #       for share in ShareDocs:
+    #           share.get('body').get('content')[content].get('paragraph').get('elements')[0].get('textRun').           get('content')
+    #
+    with open('FirstDocx.txt', 'w') as f:
+        sys.stdout = f
+        print(json.dumps(originalDoc, indent=4, sort_keys=True))
+
+    # Output json
+    for index in range(3):
+        with open('jsonDocx' + str(index) +'.txt', 'w') as f:
+            sys.stdout = f
+            print(json.dumps(shareDocs[index], indent=4, sort_keys=True))
 
     """The following program will:
         X    1. Get the document to be encrypted
