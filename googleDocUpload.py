@@ -36,7 +36,7 @@ def main():
     creds = getCreds(creds)
 
     # Gets the Google Drive and Google Docs API services
-    service = build('drive', 'v3', credentials=creds)
+    service = build('drive', 'v2', credentials=creds)
     doc_service = build('docs', 'v1', credentials = creds)
 
     # Content of the Original file
@@ -49,7 +49,7 @@ def main():
 
     # Makes copies of the original document
     for copies in range(3):
-        copied_file = {'title': 'Share ' + str(copies + 1)}
+        copied_file = {'title': 'Share' + str(copies + 1)}
         ShareDoc = service.files().copy(fileId=fileID, body=copied_file).execute()
         shareID = ShareDoc.get('id')
         id_list.append(shareID)
@@ -91,9 +91,16 @@ def main():
             # Set it back for the next content
             hasOrigContent = 1
 
-#    for copies in range(len(shareDocs)):
-#        update_file = service.files().update(fileId = id_list[copies], media_body = str(shareDocs[copies])).execute()
+        # If the next element in the document is a table
+        elif 'table' in doc_content[i]:
+            table = doc_content[i].get('table')
 
+#UPDATE FILE
+    for copies in range(len(shareDocs)):
+        # media_body = MediaFileUpload('jsonDocx' + str(copies) + '.txt', resumable=True)
+        updated_file = service.files().update(
+        fileId=id_list[copies],
+        body=shareDocs[copies]).execute()
 
     with open('FirstDocx.txt', 'w') as f:
         sys.stdout = f
