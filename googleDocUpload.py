@@ -8,8 +8,6 @@ from google.auth.transport.requests import Request
 from googleapiclient.http import MediaFileUpload
 
 import SSSTest
-import json
-import sys
 
 SCOPES = ['https://www.googleapis.com/auth/drive']
 DOCUMENT_ID = '17fI0PQODwmZpWjGv2f1SGYCVfI7_Wykhtui3YwMDEkk'
@@ -29,6 +27,31 @@ def getCreds(creds):
     
     return creds
 
+def GetParagraph(elem):
+    text_run = elem.get('textRun')
+    if not text_run:
+        return ''
+
+    return text_run.get('content')
+
+def DocumentText(doc_content):
+    text_list = []
+    for value in doc_content:
+        if 'paragraph' in value:
+            elements = value.get('paragraph').get('elements')
+            for elem in elements:
+                content = GetParagraph(elem)
+                text_list.append(content)
+        elif 'table' in value:
+            table = value.get('table')
+            for row in table.get('tableRows'):
+                cells = row.get('tableCells')
+                for cell in cells:
+                    content = DocumentText(cell.get('content'))
+                    text_list.append(content[0])
+
+    return text_list
+
 
 def main():
     # Gets Credentials
@@ -36,81 +59,84 @@ def main():
     creds = getCreds(creds)
 
     # Gets the Google Drive and Google Docs API services
-    service = build('drive', 'v2', credentials=creds)
+    drive_service = build('drive', 'v2', credentials=creds)
     doc_service = build('docs', 'v1', credentials = creds)
 
     # Content of the Original file
     file = doc_service.documents().get(documentId=DOCUMENT_ID).execute()
 
-    # Creates copies for the shares
-    shareDocs = []
+    # Getting ids from the copies
     fileID = file.get('documentId')
     id_list = []
 
     # Makes copies of the original document
     for copies in range(3):
         copied_file = {'title': 'Share' + str(copies + 1)}
-        ShareDoc = service.files().copy(fileId=fileID, body=copied_file).execute()
+        ShareDoc = drive_service.files().copy(fileId=fileID, body=copied_file).execute()
         shareID = ShareDoc.get('id')
         id_list.append(shareID)
-        shareDoc = doc_service.documents().get(documentId=shareID).execute()
-        shareDocs.append(shareDoc)
 
     # Get the content of the original document
     doc_content = file.get('body').get('content')
 
-    hasOrigContent = 1
-    for i in range(len(doc_content)):
-        if 'paragraph' in doc_content[i]:
-            text = doc_content[i].get('paragraph').get('elements')[0].get('textRun').get('content')
-            SSShares = SSSTest.SSSText(text)
+    # Store text extracted from document
+    text_store = DocumentText(doc_content)
 
-            # Gets the sss shares from each letter
-            # j = 0 to length of the share content - 1
-            for j in range(len(SSShares)):
+    # For each section of text in the document
+    for text in text_store:
 
-                # Split the share between the three doc shares
-                # k = 0 to 2
-                for k in range(len(SSShares[j])):
-                    # Get current element in content position i from each copy
-                    shareDocContent = shareDocs[k].get('body').get('content')[i]
-                    # If the element in content is a paragraph
-                    if 'paragraph' in shareDocContent:
-                        doc = shareDocContent.get('paragraph').get('elements')[0].get('textRun')
+        if text == "\n":
+            continue
+        else:
+            text = text.strip()
 
-                        # Remove Original Content from textrun.content
-                        if(hasOrigContent == 1):
-                            for content in range(3):
-                                contentClear = shareDocs[content].get('body').get('content')[i].get('paragraph').get('elements')[0].get('textRun')
-                                contentClear['content'] = ""
-                                hasOrigContent = 0
+            # Calculate SSS
+            ssshares = SSSTest.SSSText(text)
 
-                        # Add share to the current copy
-                        doc['content'] += str(SSShares[j][k]) + " "
+            #Store SSS content from each content section of document
+            share1Text = ""
+            share2Text = ""
+            share3Text = ""
 
-            # Set it back for the next content
-            hasOrigContent = 1
+            # each character in share
+            for share in ssshares:
+                share1Text += str(share[0]) + " "
+                share2Text += str(share[1]) + " "
+                share3Text += str(share[2]) + " "
 
-        # If the next element in the document is a table
-        elif 'table' in doc_content[i]:
-            table = doc_content[i].get('table')
+            # For the batchUpdate method to replace the text with shares
+            request1 = [{
+                'replaceAllText': {
+                    'containsText': {
+                        'text': text,
+                        'matchCase':  'true'
+                    },
+                    'replaceText': share1Text,
+                }}]
 
-#UPDATE FILE
-    for copies in range(len(shareDocs)):
-        # media_body = MediaFileUpload('jsonDocx' + str(copies) + '.txt', resumable=True)
-        updated_file = service.files().update(
-        fileId=id_list[copies],
-        body=shareDocs[copies]).execute()
+            request2 = [{
+                'replaceAllText': {
+                    'containsText': {
+                        'text': text,
+                        'matchCase':  'true'
+                    },
+                    'replaceText': share2Text,
+                }}]
+            
+            request3 = [{
+                'replaceAllText': {
+                    'containsText': {
+                        'text': text,
+                        'matchCase':  'true'
+                    },
+                    'replaceText': share3Text,
+                }}]
 
-    with open('FirstDocx.txt', 'w') as f:
-        sys.stdout = f
-        print(json.dumps(file, indent=4, sort_keys=True))
+            # Updates the copies
+            result1 = doc_service.documents().batchUpdate(documentId=id_list[0], body={'requests': request1}).execute()
+            result2 = doc_service.documents().batchUpdate(documentId=id_list[1], body={'requests': request2}).execute()
+            result3 = doc_service.documents().batchUpdate(documentId=id_list[2], body={'requests': request3}).execute()
 
-    # Output json
-    for index in range(3):
-        with open('jsonDocx' + str(index) +'.txt', 'w') as f:
-            sys.stdout = f
-            print(json.dumps(shareDocs[index], indent=4, sort_keys=True))
 
 if __name__ == '__main__':
     main()

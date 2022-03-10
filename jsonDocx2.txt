@@ -19,7 +19,7 @@
                             "endIndex": 6,
                             "startIndex": 1,
                             "textRun": {
-                                "content": "(2730, 109868966) (84366, 7156936613) (87047, 5079714847) (71155, 6457102901) (90565, 4807733600) ",
+                                "content": "",
                                 "textStyle": {}
                             }
                         }
@@ -39,7 +39,7 @@
                             "endIndex": 15,
                             "startIndex": 6,
                             "textRun": {
-                                "content": "(779, 67766868) (81776, 3015817215) (25818, 2081163261) (84094, 2456301763) (12084, 748325977) (42334, 1382501539) (81665, 501994865) (12147, 511085141) (45740, 2539301850) ",
+                                "content": "",
                                 "textStyle": {}
                             }
                         }
@@ -836,7 +836,7 @@
                             "endIndex": 74,
                             "startIndex": 73,
                             "textRun": {
-                                "content": "(22215, 60691390) ",
+                                "content": "",
                                 "textStyle": {}
                             }
                         }
@@ -856,7 +856,7 @@
                             "endIndex": 79,
                             "startIndex": 74,
                             "textRun": {
-                                "content": "(60188, 4859699615) (12758, 141384267) (48601, 3371791691) (32468, 2970042875) (17520, 1007084650) ",
+                                "content": "",
                                 "textStyle": {}
                             }
                         }
@@ -870,7 +870,7 @@
             }
         ]
     },
-    "documentId": "140GCHW5B45p0XOkwYcH7iw4BDwHTfCSnSBY2kk09T54",
+    "documentId": "1Gg_l_4Ty9Phl2NGRejyv2KRODiUo7iTCIZWVI3ofZaI",
     "documentStyle": {
         "background": {
             "color": {}
@@ -1254,7 +1254,7 @@
             }
         ]
     },
-    "revisionId": "ALm37BU5NCbAXkB82UXpxvq2eGJI3dwVUbF1INCgJzZjSfxk_iD-CCiZcvdQKKCPHYLCL-py1mE0DhS-js208Q",
+    "revisionId": "ALm37BWcTK-uWpm7PrESjx6lCPlQ8ZPXCMYNlU0R2FR_Zid_WIT4SrYxnHSGSJvPvZn1hy4eQGV9_lDlm543Eg",
     "suggestionsViewMode": "SUGGESTIONS_INLINE",
     "title": "Share3"
 }
