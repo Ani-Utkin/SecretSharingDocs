@@ -1,15 +1,16 @@
 from __future__ import print_function
+from asyncio.windows_events import NULL
 import pickle
 import os.path
 from googleapiclient.discovery import build
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 
-from googleapiclient.http import MediaFileUpload
+from googleapiclient.http import MediaFileUpload, MediaIoBaseDownload
+import io
 
 import SSSTest
-import json
-import sys
+import random
 
 SCOPES = ['https://www.googleapis.com/auth/drive']
 DOCUMENT_ID = '17fI0PQODwmZpWjGv2f1SGYCVfI7_Wykhtui3YwMDEkk'
@@ -71,32 +72,7 @@ def DocumentText(doc_content):
     return text_list
 
 
-def main():
-    # Gets Credentials
-    creds = None
-    creds = getCreds(creds)
-
-    # Gets the Google Drive and Google Docs API services
-    drive_service = build('drive', 'v2', credentials=creds)
-    doc_service = build('docs', 'v1', credentials = creds)
-
-    # Content of the Original file
-    file = doc_service.documents().get(documentId=DOCUMENT_ID).execute()
-
-    # Getting ids from the copies
-    fileID = file.get('documentId')
-    id_list = []
-
-    # Makes copies of the original document
-    for copies in range(3):
-        copied_file = {'title': 'Share' + str(copies + 1)}
-        ShareDoc = drive_service.files().copy(fileId=fileID, body=copied_file).execute()
-        shareID = ShareDoc.get('id')
-        id_list.append(shareID)
-
-    # Get the content of the original document
-    doc_content = file.get('body').get('content')
-
+def SSSEncrypt(doc_content):
     # dictionary to store text extracted from document and its starting index
     text_store = DocumentText(doc_content)
 
@@ -104,8 +80,6 @@ def main():
     startIndex1 = 1
     startIndex2 = 1
     startIndex3 = 1
-
-    print(text_store)
 
     # Loop through every index in the dictionary
     for index in text_store:
@@ -131,9 +105,9 @@ def main():
         SSShare3Text = ""
 
         for share in firstSSS:
-            SSShare1Text += str(share[0])
-            SSShare2Text += str(share[1])
-            SSShare3Text += str(share[2])
+            SSShare1Text += str(share[0]) + " "
+            SSShare2Text += str(share[1]) + " "
+            SSShare3Text += str(share[2]) + " "
         
         # Requests to delete the original text and insert encryptions
         # to each share document
@@ -200,6 +174,149 @@ def main():
         startIndex1 = startIndex1 + len(SSShare1Text) + 1
         startIndex2 = startIndex2 + len(SSShare2Text) + 1
         startIndex3 = startIndex3 + len(SSShare3Text) + 1
+
+
+def DownloadFile(id, title):
+
+    request = drive_service.files().export_media(fileId=id, mimeType='application/pdf')
+    fh = io.BytesIO()
+    downloader = MediaIoBaseDownload(fh, request=request)
+    done = False
+    while done is False:
+        status, done = downloader.next_chunk()
+        print('Download progress {0}'.format(status.progress() * 100))
+    
+    fh.seek(0)
+
+    downtitle = title.get('title') + ".pdf"
+
+    with open(downtitle, 'wb') as f:
+        f.write(fh.read())
+        f.close
+
+def SSSReconstruct(docIDs):
+    
+    # Create the Reconstructed Document Object
+    reconstruct_title = {'title': 'Reconstructed Document'}
+    reconDrive = drive_service.files().copy(fileId=id_list[0], body=reconstruct_title).execute()
+    reconDoc = doc_service.documents().get(documentId=reconDrive.get('id')).execute()
+    reconID = reconDoc.get('documentId')
+
+    reconDocContent = DocumentText(reconDoc.get('body').get('content'))
+
+    # Randomize between which 2 shares will be chosen for reconstruction
+    pool = random.sample(docIDs, 2)
+    shareDocs = []
+    for id in pool:
+        shareDoc = doc_service.documents().get(documentId=id).execute()
+        shareDocs.append(shareDoc)
+    
+    # Access the contents of the document and extract the shares
+    doc1 = DocumentText(shareDocs[0].get('body').get('content'))
+    doc2 = DocumentText(shareDocs[1].get('body').get('content'))
+
+    # With the extracted text, combine the shares and calculate reconstruction
+    # Then insert the result to the reconstructed document
+    startIndex = 1
+    for (key1, value1), (key2, value2), (key3, value3) in zip(doc1.items(), doc2.items(), reconDocContent.items()):
+
+        if value1 == None or value1 == "\n" or len(value1) == 0 or value2 == None or value2 == "\n" or len(value2) == 0:
+            startIndex += 1
+            continue
+
+        if value3 == None or value3 == "\n" or len(value3) == 0:
+            startIndex+=1
+            continue
+
+        share1 = value1.split(") ")
+        share2 = value2.split(") ")
+
+        reconstruct_list = []
+        for i in range(len(share1) - 1):
+            share_list = []
+            j1 = share1[i] + ")"
+            j2 = share2[i] + ")"
+
+            j1int = tuple(int(num) for num in j1.replace('(', '').replace(')', '').replace('...', '').split(', '))
+            j2int = tuple(int(num) for num in j2.replace('(', '').replace(')', '').replace('...', '').split(', '))
+
+            share_list.append(j1int) 
+            share_list.append(j2int)
+
+            reconstruct_list.append(share_list)
+    
+        text = SSSTest.SSS_reconstruct(reconstruct_list)
+
+        # Requests to delete the original text and insert reconstructed text
+        request1 = [{
+            'deleteContentRange': {
+                'range': {
+                    'startIndex': startIndex,
+                    'endIndex': startIndex + len(value3) - 1,
+                }
+            },
+        },
+
+        {
+            'insertText': {
+                'location': {
+                    'index': startIndex,
+                },
+                'text': text
+            }
+        }]
+
+        result = doc_service.documents().batchUpdate(documentId=reconID, body={'requests': request1}).execute()
+        startIndex = startIndex + len(text) + 1
+    
+    # Once the reconstruction is done, download the file and remove the file from the drive
+    DownloadFile(reconDrive.get('id'), reconstruct_title)
+
+
+def main():
+    global id_list
+    global drive_service
+    global doc_service
+
+    # Gets Credentials
+    creds = None
+    creds = getCreds(creds)
+
+    # Gets the Google Drive and Google Docs API services
+    drive_service = build('drive', 'v2', credentials=creds)
+    doc_service = build('docs', 'v1', credentials = creds)
+
+    # Content of the Original file
+    file = doc_service.documents().get(documentId=DOCUMENT_ID).execute()
+
+    # Getting ids from the copies
+    fileID = file.get('documentId')
+
+    # Makes copies of the original document
+    id_list = []
+    for copies in range(3):
+        copied_file = {'title': 'Share' + str(copies + 1)}
+        ShareDoc = drive_service.files().copy(fileId=fileID, body=copied_file).execute()
+        shareID = ShareDoc.get('id')
+        id_list.append(shareID)
+
+    # Get the content of the original document
+    doc_content = file.get('body').get('content')
+
+
+
+    # Method which will encrypt the entire document,
+    # Creating 3 shares which would all be uploaded to Google Drive
+    SSSEncrypt(doc_content)
+
+
+    # Reconstruction using the three created shares
+    # Choose 2 shares and implement SSS_reconstruction on each paragraph
+    # Create a copy from one of the shares and update with the reconstructed data
+    # Then download the reconstructed document
+    SSSReconstruct(id_list)
+
+
 
 if __name__ == '__main__':
     main()
