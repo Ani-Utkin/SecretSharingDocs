@@ -1,0 +1,5 @@
+{
+  "dependencies": {
+    "react-google-picker": "^0.1.0"
+  }
+}
