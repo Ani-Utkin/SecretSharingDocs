@@ -7,7 +7,7 @@ import './App.css'
 // When uploading a file, will need to pass id and mimetype to the backend to find out which encryption type to use.
 
 const App = () => {
-  const [openPicker, data, authResponse] = useDrivePicker();
+  const [openPicker, data] = useDrivePicker();
   const [loading, setLoading] = useState(false);
 
   const handleOpenPicker = (encrypt, mult) => {
