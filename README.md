@@ -15,6 +15,10 @@ Packages required:
 * React
 * googleapiclient
 * Google API Library
+    * Google Drive API
+    * Google Docs API
+    * Google Picker API
+    * Google Sheets API
 
 
 # Start the Application
